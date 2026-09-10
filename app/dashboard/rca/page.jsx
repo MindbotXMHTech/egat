@@ -261,7 +261,7 @@ export default function RcaPage() {
       <PageHeader
         icon="🔍"
         title="Root Cause Analysis"
-        subtitle="Rule-Based + GNN + Bayesian Network + Association Rules | AI-Powered Diagnosis"
+        subtitle="Rule-Based + Topology Correlation + Bayesian Network | AI-Powered Diagnosis"
         extraAlerts={rcaAlerts}
       />
 
@@ -431,7 +431,7 @@ export default function RcaPage() {
           {/* Cause hierarchy + Data integration */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="card p-5">
-              <SectionHeader title="Cause Hierarchy (GNN Analysis)" />
+              <SectionHeader title="CAUSE HIERARCHY" />
               <div className="space-y-2 mt-2">
                 {causeData.map((c,i)=>(
                   <div key={i} className="flex items-center gap-3">
@@ -473,7 +473,7 @@ export default function RcaPage() {
               ))}
               <div className="mt-2 p-3 rounded-lg bg-egat-blue-bg border border-blue-200">
                 <div className="text-[10px] font-semibold text-egat-blue uppercase tracking-wider mb-1">AI Model Pipeline</div>
-                <div className="text-xs text-egat-text-sub">Rule-based pre-filter → GNN topology analysis → Bayesian inference → Association rule mining → Ranked cause list</div>
+                <div className="text-xs text-egat-text-sub">Rule-based pre-filter → Topology correlation → Bayesian inference → Ranked cause list</div>
               </div>
             </div>
           </div>
