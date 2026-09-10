@@ -1,0 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-inter: 'Inter', 'IBM Plex Sans Thai', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    font-family: 'Inter', 'IBM Plex Sans Thai', sans-serif;
+    background-color: #F0F4F8;
+    color: #1A202C;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #EEF2F7; }
+  ::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #A0AEC0; }
+}
+
+@layer components {
+  /* ── Card ─────────────────────────────────────────────── */
+  .card {
+    @apply bg-egat-surface border border-egat-border rounded-xl shadow-card;
+  }
+  .card-sm {
+    @apply bg-egat-surface border border-egat-border rounded-lg shadow-card;
+  }
+
+  /* ── KPI accent bar ───────────────────────────────────── */
+  .kpi-bar::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-[3px] rounded-t-xl;
+    background: var(--kpi-color, #1B3A6B);
+  }
+
+  /* ── Status dot pulse ─────────────────────────────────── */
+  .status-dot-live {
+    @apply w-2 h-2 rounded-full inline-block;
+    animation: pulseDot 2s infinite;
+  }
+
+  /* ── Tab pill ─────────────────────────────────────────── */
+  .tab-pill {
+    @apply text-xs font-semibold px-4 py-1.5 rounded-md transition-all duration-150 cursor-pointer;
+  }
+  .tab-pill.active {
+    @apply bg-egat-surface text-egat-navy shadow-sm;
+  }
+  .tab-pill:not(.active) {
+    @apply text-egat-text-muted hover:text-egat-text-sub;
+  }
+
+  /* ── Section header bar ───────────────────────────────── */
+  .sec-bar {
+    @apply w-[3px] h-[18px] rounded-full flex-shrink-0;
+    background: #E8960C;
+  }
+
+  /* ── Sidebar nav item ─────────────────────────────────── */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+           text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-150 cursor-pointer;
+  }
+  .nav-item.active {
+    @apply bg-white/15 text-white;
+  }
+  .nav-item.active .nav-dot {
+    @apply bg-egat-gold;
+  }
+
+  /* ── Recharts overrides ───────────────────────────────── */
+  .recharts-tooltip-wrapper { outline: none !important; }
+  .recharts-default-tooltip {
+    border-color: #DDE3ED !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    font-size: 12px !important;
+  }
+  .recharts-cartesian-grid-horizontal line,
+  .recharts-cartesian-grid-vertical line {
+    stroke: #EEF2F7 !important;
+  }
+}
+
+@layer utilities {
+  .text-shadow-sm { text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+  .gradient-navy { background: linear-gradient(135deg, #0D2240 0%, #1B3A6B 100%); }
+  .gradient-gold { background: linear-gradient(135deg, #E8960C 0%, #F5B942 100%); }
+}
+
+/* Health pie detail panel — slide/fade without unmounting on close */
+.health-pie-split,
+.lcc-pie-split {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  transition: gap 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.health-pie-split.is-open,
+.lcc-pie-split.is-open {
+  gap: 12px;
+}
+.health-pie-panel,
+.lcc-pie-panel {
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  transform: translateY(-8px);
+  transition:
+    max-height 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease,
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.health-pie-panel.is-open {
+  overflow: visible;
+  opacity: 1;
+  pointer-events: auto;
+  max-height: 220px;
+  transform: none;
+}
+.lcc-pie-panel.is-open {
+  opacity: 1;
+  pointer-events: auto;
+  max-height: 260px;
+  transform: none;
+}
+@media (min-width: 1024px) {
+  .health-pie-split,
+  .lcc-pie-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 0fr;
+    align-items: center;
+    transition:
+      grid-template-columns 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      gap 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .health-pie-split.is-open,
+  .lcc-pie-split.is-open {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  }
+  .health-pie-panel,
+  .lcc-pie-panel {
+    width: 100%;
+    transform: translateX(16px);
+  }
+  .health-pie-panel { max-height: 198px; }
+  .lcc-pie-panel { max-height: 240px; }
+  .health-pie-panel.is-open,
+  .lcc-pie-panel.is-open {
+    transform: none;
+  }
+  .health-pie-panel.is-open { max-height: 198px; }
+  .lcc-pie-panel.is-open { max-height: 240px; }
+}
+@keyframes healthDetailRowIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.health-detail-row {
+  animation: healthDetailRowIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .health-pie-split,
+  .lcc-pie-split,
+  .health-pie-panel,
+  .lcc-pie-panel,
+  .health-detail-row {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}
