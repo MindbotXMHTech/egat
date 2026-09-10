@@ -133,6 +133,7 @@ function PendingDetail(row) {
 
 export default function PredictivePage() {
   const header = useHeaderFilters()
+  const { allowedSites, scopedFleet } = useSiteScope()
   const [asset,    setAsset]    = useState(FLEET[0].id)
   const [tab,      setTab]      = useState(0)
   const [assetType, setAssetType] = useState('')
@@ -142,10 +143,10 @@ export default function PredictivePage() {
   const [calQuery, setCalQuery] = useState('')
 
   const filters = useMemo(
-    () => ({ ...header.tableFilters, assetType }),
-    [header.tableFilters, assetType],
+    () => ({ ...header.tableFilters, assetType, allowedSites }),
+    [header.tableFilters, assetType, allowedSites],
   )
-  const filteredFleet = useMemo(() => filterFleet(FLEET, filters), [filters])
+  const filteredFleet = useMemo(() => filterFleet(scopedFleet, filters), [scopedFleet, filters])
   const pendingRows = useMemo(
     () => filterPendingRows(PENDING_ASSETS, filters),
     [filters],
@@ -157,7 +158,7 @@ export default function PredictivePage() {
   const avgRulRows = useMemo(() => toAvgRulRows(filteredFleet), [filteredFleet])
   const rulTableRows = useMemo(() => toRulTableRows(filteredFleet), [filteredFleet])
 
-  const curAsset = filteredFleet.find(f => f.id === asset) || FLEET.find(f => f.id === asset)
+  const curAsset = filteredFleet.find(f => f.id === asset) || scopedFleet.find(f => f.id === asset)
   const series   = generateDegradationTrend(asset)
   const avgRul   = +(pendingRows.reduce((s,a)=>s+a.rul,0)/Math.max(1,pendingRows.length)).toFixed(1)
 
@@ -185,12 +186,12 @@ export default function PredictivePage() {
     () => enrichCalendarItems(
       filterCalendarItems(
         MAINTENANCE_SCHEDULE,
-        { ...calRange, query: calQuery, assetType, location: header.location },
-        FLEET,
+        { ...calRange, query: calQuery, assetType, location: header.location, allowedSites },
+        scopedFleet,
       ),
-      FLEET,
+      scopedFleet,
     ),
-    [calRange, calQuery, assetType, header.location],
+    [calRange, calQuery, assetType, header.location, allowedSites, scopedFleet],
   )
   const calDays = useMemo(
     () => buildCalendarDays(calMonth.year, calMonth.monthIndex, calItems),
@@ -293,7 +294,7 @@ export default function PredictivePage() {
           <label className="block text-[10px] font-semibold uppercase tracking-wider text-egat-text-muted mb-1">Asset</label>
           <select value={asset} onChange={e=>setAsset(e.target.value)}
             className="text-xs border border-egat-border rounded-lg px-3 py-1.5 bg-egat-surface text-egat-text focus:outline-none focus:border-egat-navy">
-            {(filteredFleet.length ? filteredFleet : FLEET).map(f=><option key={f.id} value={f.id}>{f.id} — {f.site}</option>)}
+            {(filteredFleet.length ? filteredFleet : scopedFleet).map(f=><option key={f.id} value={f.id}>{f.id} — {f.site}</option>)}
           </select>
         </div>
         <div>
