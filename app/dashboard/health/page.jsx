@@ -156,6 +156,7 @@ function HealthPieActiveShape(props) {
 
 export default function HealthPage() {
   const header = useHeaderFilters()
+  const { allowedSites } = useSiteScope()
   const [asset,      setAsset]      = useState(FLEET[0].id)
   const [tab,        setTab]        = useState(0)
   const [avgView,    setAvgView]    = useState(false)
@@ -170,8 +171,11 @@ export default function HealthPage() {
   const [panelOpen,  setPanelOpen]  = useState(false)
 
   const scopedDevices = useMemo(
-    () => DEVICES_TABLE.filter(d => !header.location || d.site === header.location),
-    [header.location],
+    () => DEVICES_TABLE.filter(d => {
+      if (Array.isArray(allowedSites) && !allowedSites.includes(d.site)) return false
+      return !header.location || d.site === header.location
+    }),
+    [header.location, allowedSites],
   )
   const pieSource = useMemo(() => buildHealthPieData(scopedDevices), [scopedDevices])
   const pieVisible = useMemo(() => visibleHealthPieData(pieSource, hiddenCats), [pieSource, hiddenCats])

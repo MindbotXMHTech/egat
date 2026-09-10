@@ -128,9 +128,19 @@ function summarizeLifecycle(assets) {
 
 export default function LifecyclePage() {
   const header = useHeaderFilters()
-  const scoped = useMemo(() => assetsAtLocation(LIFECYCLE, header.location), [header.location])
-  const nearEol = useMemo(() => assetsAtLocation(NEAR_EOL, header.location), [header.location])
-  const planRows = useMemo(() => assetsAtLocation(LIFECYCLE_TABLE, header.location), [header.location])
+  const { allowedSites } = useSiteScope()
+  const scoped = useMemo(
+    () => assetsAtLocation(assetsInSiteScope(LIFECYCLE, allowedSites), header.location),
+    [header.location, allowedSites],
+  )
+  const nearEol = useMemo(
+    () => assetsAtLocation(assetsInSiteScope(NEAR_EOL, allowedSites), header.location),
+    [header.location, allowedSites],
+  )
+  const planRows = useMemo(
+    () => assetsAtLocation(assetsInSiteScope(LIFECYCLE_TABLE, allowedSites), header.location),
+    [header.location, allowedSites],
+  )
   const summary = useMemo(() => summarizeLifecycle(scoped), [scoped])
   const costPie = useMemo(() => buildLccPieData(costTotals(scoped)), [scoped])
   const totalCost = costPie.reduce((s, c) => s + c.value, 0)
