@@ -44,6 +44,41 @@ import {
 
 const TABS = ['Score Breakdown', 'Device Health Table', 'Trend Analysis']
 
+const MOCK_SCENARIOS = {
+  normal: {
+    label: 'Normal', tone: 'green',
+    description: 'KPI ปกติ อุปกรณ์มีอายุการใช้งานเหลือเพียงพอ',
+    values: { cpu: 35, bw: 40, pkt_loss: 0.1, latency: 12, errors: 0.2, days_maint: 30, age: 3 },
+  },
+  warning: {
+    label: 'Warning', tone: 'amber',
+    description: 'การใช้งานเริ่มสูง ควรเฝ้าระวังและวางแผนบำรุงรักษา',
+    values: { cpu: 78, bw: 76, pkt_loss: 1.4, latency: 72, errors: 2.6, days_maint: 150, age: 7 },
+  },
+  critical: {
+    label: 'Critical', tone: 'red',
+    description: 'KPI ผิดปกติรุนแรง ควรแจ้งเตือนและดำเนินการแก้ไขทันที',
+    values: { cpu: 96, bw: 92, pkt_loss: 4.6, latency: 180, errors: 9.2, days_maint: 300, age: 8 },
+  },
+  eol: {
+    label: 'End of Life', tone: 'purple',
+    description: 'KPI อาจปกติ แต่อุปกรณ์สิ้นสุดอายุการใช้งานและควรวางแผนทดแทน',
+    values: { cpu: 42, bw: 45, pkt_loss: 0.1, latency: 15, errors: 0.3, days_maint: 60, age: 20 },
+  },
+}
+
+const MOCK_INPUTS = [
+  ['cpu', 'CPU', '%', 0, 100], ['bw', 'BW', '%', 0, 100], ['pkt_loss', 'Packet Loss', '%', 0, 100],
+  ['latency', 'Latency', 'ms', 0, 1000], ['errors', 'Error Rate', '%', 0, 100], ['days_maint', 'Last Maintenance', 'days', 0, 3650],
+  ['age', 'Asset Age', 'yr', 0, 50],
+]
+
+function clampMockValue(value, min, max) {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return min
+  return Math.min(max, Math.max(min, parsed))
+}
+
 // All devices table
 const DEVICES_TABLE = FLEET.map(f => ({
   deviceId:   f.id,
@@ -306,13 +341,39 @@ export default function HealthPage() {
   const [trendType,  setTrendType]  = useState('')
   const [trendModal, setTrendModal] = useState(null)
   const [pieCat,     setPieCat]     = useState(null)
+  const [mockScenario, setMockScenario] = useState('normal')
+  const [mockInputs, setMockInputs] = useState(MOCK_SCENARIOS.normal.values)
+  const [mockMode, setMockMode] = useState(false)
+
+  const sourceDevices = useMemo(() => {
+    if (!mockMode) return DEVICES_TABLE
+    return DEVICES_TABLE.map(device => {
+      const mockDetails = getHealthDetails(device.deviceId, mockInputs)
+      const mockKpis = mockDetails.kpis
+      return {
+        ...device,
+        health: mockDetails.score,
+        status: mockDetails.status,
+        category: getHealthCategory(mockDetails.score),
+        cpu: mockKpis.cpu,
+        bw: mockKpis.bw,
+        pktLoss: mockKpis.pkt_loss,
+        latency: mockKpis.latency,
+        age: mockKpis.age,
+        uptime: +Math.max(90, Math.min(99.99, 99.5 - (mockKpis.pkt_loss * 2 + mockKpis.errors * 0.5))).toFixed(2),
+        rul: Math.max(0, device.life - mockKpis.age),
+        lastMaint: mockKpis.days_maint,
+        failProb: +Math.min(0.97, ((mockKpis.age / device.life) * 0.55 + mockKpis.pkt_loss * 0.07 + (mockKpis.cpu > 85 ? 0.15 : 0))).toFixed(2),
+      }
+    })
+  }, [mockMode, mockInputs])
 
   const scopedDevices = useMemo(
-    () => DEVICES_TABLE.filter(d => {
+    () => sourceDevices.filter(d => {
       if (Array.isArray(allowedSites) && !allowedSites.includes(d.site)) return false
       return !header.location || d.site === header.location
     }),
-    [header.location, allowedSites],
+    [header.location, allowedSites, sourceDevices],
   )
   const pieSource = useMemo(() => buildHealthPieData(scopedDevices), [scopedDevices])
   const pieVisible = useMemo(() => visibleHealthPieData(pieSource, hiddenCats), [pieSource, hiddenCats])
@@ -376,11 +437,11 @@ export default function HealthPage() {
     if (pool.length && !pool.some(d => d.deviceId === asset)) setAsset(pool[0].deviceId)
   }
 
-  const details = getHealthDetails(asset)
+  const details = getHealthDetails(asset, mockMode ? mockInputs : {})
   const trend = useMemo(() => {
     const device = scopedDevices.find(d => d.deviceId === asset) || { deviceId: asset }
-    return enrichHealthTrend(generateHealthTrend(asset), device, trendThreshold)
-  }, [asset, scopedDevices, trendThreshold])
+    return enrichHealthTrend(generateHealthTrend(asset, details?.score), device, trendThreshold)
+  }, [asset, scopedDevices, trendThreshold, details?.score])
   const chartTrend = useMemo(
     () => filterHealthTrend(trend, { query: trendQuery, dates: trendDates }),
     [trend, trendQuery, trendDates],
@@ -421,6 +482,55 @@ export default function HealthPage() {
       <PageHeader icon="💚" title="Health Score"
         subtitle="Weighted Composite Scoring | Performance · Availability · Error Rate · Age · Maintenance"
         extraAlerts={extraAlerts} />
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setMockMode(enabled => !enabled)}
+          aria-pressed={mockMode}
+          className={`rounded-lg px-4 py-2 text-xs font-bold transition-colors ${mockMode ? 'bg-egat-navy text-white' : 'border border-egat-border bg-white text-egat-navy hover:bg-egat-surface-alt'}`}
+        >
+          {mockMode ? 'Mock Test Mode: On' : 'Mock Test Mode: Off'}
+        </button>
+        <span className="text-xs text-egat-text-muted">{mockMode ? 'ทั้ง 3 แถบกำลังใช้ชุดข้อมูล mock เดียวกัน' : 'กำลังแสดงข้อมูล Fleet จำลองชุดมาตรฐาน'}</span>
+      </div>
+
+      {mockMode && (
+        <div className="card p-5 mb-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-3 justify-between">
+              <div>
+                <SectionHeader title="Mock Health Score Test" />
+                <p className="text-xs text-egat-text-muted mt-1">ข้อมูลนี้ใช้คำนวณทั้ง Fleet Distribution, Device Health Table และ Trend Analysis</p>
+              </div>
+              <div className="w-full sm:w-56">
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-egat-text-muted mb-1">Test scenario</label>
+                <select value={mockScenario} onChange={e => {
+                  const key = e.target.value
+                  setMockScenario(key)
+                  setMockInputs(MOCK_SCENARIOS[key].values)
+                }} className="w-full text-xs border border-egat-border rounded-lg px-3 py-2 bg-egat-surface text-egat-text focus:outline-none focus:border-egat-navy">
+                  {Object.entries(MOCK_SCENARIOS).map(([key, scenario]) => <option key={key} value={key}>{scenario.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className={`rounded-lg border px-3 py-2 text-xs ${MOCK_SCENARIOS[mockScenario].tone === 'red' ? 'bg-red-50 border-red-200 text-red-800' : MOCK_SCENARIOS[mockScenario].tone === 'purple' ? 'bg-purple-50 border-purple-200 text-purple-800' : MOCK_SCENARIOS[mockScenario].tone === 'amber' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+              <span className="font-bold">{MOCK_SCENARIOS[mockScenario].label}:</span> {MOCK_SCENARIOS[mockScenario].description}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              {MOCK_INPUTS.map(([key, label, unit, min, max]) => (
+                <label key={key} className="block">
+                  <span className="block text-[10px] font-semibold uppercase tracking-wider text-egat-text-muted mb-1">{label}</span>
+                  <div className="relative">
+                    <input type="number" min={min} max={max} step="any" value={mockInputs[key]} onChange={e => setMockInputs(values => ({ ...values, [key]: clampMockValue(e.target.value, min, max) }))} className="w-full text-xs border border-egat-border rounded-lg px-2 py-2 pr-8 bg-egat-surface text-egat-text focus:outline-none focus:border-egat-navy" />
+                    <span className="absolute right-2 top-2 text-[10px] text-egat-text-muted">{unit}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 1. Tabs */}
       <div className="flex flex-wrap gap-1 mb-4 bg-egat-surface-alt border border-egat-border rounded-lg p-1 w-fit">
@@ -532,6 +642,7 @@ export default function HealthPage() {
                 {kpis.pkt_loss>2&& <AlertItem severity="critical" asset={asset} msg={`Packet loss ${kpis.pkt_loss}% — วิกฤต`} time="" />}
                 {kpis.latency>100&&<AlertItem severity="warning"  asset={asset} msg={`Latency ${kpis.latency}ms — สูงเกิน`} time="" />}
                 {kpis.days_maint>180&&<AlertItem severity="watch" asset={asset} msg={`บำรุงรักษา ${kpis.days_maint} วัน`} time="" />}
+                {mockMode && mockScenario === 'eol' && <AlertItem severity="watch" asset={asset} msg={`อายุอุปกรณ์ ${mockInputs.age} ปี — ควรวางแผนเปลี่ยน/อัปเกรด`} time="" />}
                 {score>=80      && <AlertItem severity="healthy"  asset={asset} msg="ทุก KPI อยู่ในเกณฑ์ปกติ" time="" />}
               </div>
             </div>
