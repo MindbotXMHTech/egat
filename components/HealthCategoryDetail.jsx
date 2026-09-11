@@ -38,14 +38,14 @@ export default function HealthCategoryDetail({
 
   return (
     <aside
-      className="flex flex-col gap-2.5 rounded-lg px-4 py-[17px] w-full overflow-visible h-[198px]"
+      className="flex flex-col gap-2.5 rounded-lg px-4 py-[17px] w-full min-w-0 h-full min-h-0 overflow-visible"
       style={{
         background: color,
         transition: 'background-color 0.35s ease',
       }}
     >
       <div className="flex items-center justify-between gap-2 shrink-0 w-full relative">
-        <h3 className="text-base font-bold text-white truncate leading-normal min-w-0">
+        <h3 className="text-sm font-bold text-white min-w-0 leading-tight">
           {title}
           {percent != null ? ` · ${percent}%` : ''}
         </h3>

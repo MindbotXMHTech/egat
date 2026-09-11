@@ -294,7 +294,23 @@ export default function LifecyclePage() {
 
       {/* ─── Tab 0: Near-EoL Assets ───────────────────────────────────────────── */}
       {tab===0 && (
-        <div className="card p-5">
+        <div className="space-y-4">
+          <div className="card p-5">
+            <SectionHeader title="Annual Budget Requirement — 5 ปีข้างหน้า" />
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={budget5yr} margin={{top:5,right:10,bottom:5,left:5}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
+                <XAxis dataKey="year" tick={{fontSize:10,fill:'#8896A4'}} />
+                <YAxis tick={{fontSize:9,fill:'#8896A4'}} tickFormatter={v=>`฿${(v/1e6).toFixed(0)}M`} />
+                <Tooltip contentStyle={{borderRadius:10,fontSize:11}} formatter={v=>`฿${v?.toLocaleString()}`} />
+                <Legend iconSize={8} wrapperStyle={{fontSize:11}} />
+                <Bar dataKey="replacement" stackId="a" fill="#C53030" fillOpacity={0.85} name="CAPEX" />
+                <Bar dataKey="maintenance" stackId="a" fill="#1B3A6B" fillOpacity={0.85} name="OPEX" />
+                <Bar dataKey="contingency" fill="#E8960C" fillOpacity={0.6} name="Contingency" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="card p-5">
           <SectionHeader title={`Near End-of-Life Assets (RUL ≤ 3 yr) — ${nearEol.length} รายการ`} />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
             {['Immediate','High','Medium','Low'].map(p=>(
@@ -321,6 +337,7 @@ export default function LifecyclePage() {
             rowDetail={LifecycleDetail}
             exportName="near_eol_assets"
           />
+          </div>
         </div>
       )}
 
@@ -580,22 +597,6 @@ export default function LifecyclePage() {
                 )
               })}
             </div>
-          </div>
-
-          <div className="card p-5">
-            <SectionHeader title="Annual Budget Requirement — 5 ปีข้างหน้า" />
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={budget5yr} margin={{top:5,right:10,bottom:5,left:5}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-                <XAxis dataKey="year" tick={{fontSize:10,fill:'#8896A4'}} />
-                <YAxis tick={{fontSize:9,fill:'#8896A4'}} tickFormatter={v=>`฿${(v/1e6).toFixed(0)}M`} />
-                <Tooltip contentStyle={{borderRadius:10,fontSize:11}} formatter={v=>`฿${v?.toLocaleString()}`} />
-                <Legend iconSize={8} wrapperStyle={{fontSize:11}} />
-                <Bar dataKey="replacement" stackId="a" fill="#C53030" fillOpacity={0.85} name="CAPEX" />
-                <Bar dataKey="maintenance" stackId="a" fill="#1B3A6B" fillOpacity={0.85} name="OPEX" />
-                <Bar dataKey="contingency" fill="#E8960C" fillOpacity={0.6} name="Contingency" />
-              </BarChart>
-            </ResponsiveContainer>
           </div>
         </div>
       )}

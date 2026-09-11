@@ -72,33 +72,24 @@ const layerDist = Object.entries(
 ).map(([layer, count]) => ({ layer, count, color: LAYER_COLOR[layer] }))
 
 function RcaPieActiveShape(props) {
-  const {
-    cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, percent, midAngle,
-  } = props
-  const RADIAN = Math.PI / 180
-  const r = (outerRadius || 0) + 18
-  const x = cx + r * Math.cos(-(midAngle || 0) * RADIAN)
-  const y = cy + r * Math.sin(-(midAngle || 0) * RADIAN)
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props
   return (
-    <g>
-      <Sector
-        cx={cx} cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={(outerRadius || 0) + 8}
-        startAngle={startAngle} endAngle={endAngle}
-        fill={fill}
-      />
-      <text
-        x={x} y={y}
-        textAnchor={x > cx ? 'start' : 'end'}
-        dominantBaseline="central"
-        fill={fill}
-        fontSize={12}
-      >
-        {`${Math.round((percent || 0) * 100)}%`}
-      </text>
-    </g>
+    <Sector
+      cx={cx} cy={cy}
+      innerRadius={innerRadius}
+      outerRadius={(outerRadius || 0) + 8}
+      startAngle={startAngle} endAngle={endAngle}
+      fill={fill}
+    />
   )
+}
+
+function rcaPieSliceLabel(selectedCat) {
+  return ({ pct, payload }) => {
+    if (selectedCat && payload?.category !== selectedCat) return null
+    if (pct == null) return null
+    return `${pct}%`
+  }
 }
 
 // RCA Detail modal
@@ -520,7 +511,7 @@ export default function RcaPage() {
                         activeIndex={pieActiveIndex >= 0 ? pieActiveIndex : undefined}
                         activeShape={RcaPieActiveShape}
                         onClick={handlePieClick}
-                        label={({ pct }) => `${pct}%`}
+                        label={rcaPieSliceLabel(pieCat)}
                         labelLine={false}>
                         {pieData.map((e)=>(
                           <Cell key={e.category} fill={e.color} cursor="pointer" />
@@ -581,14 +572,26 @@ export default function RcaPage() {
           {/* Confidence by incident */}
           <div className="card p-5">
             <SectionHeader title="Confidence Score per Incident" />
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={rcaTable} margin={{top:5,right:10,bottom:5,left:5}}>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart
+                data={rcaTable.map(r => ({
+                  id: r.id,
+                  confPct: Math.round((Number(r.confNum) || 0) * 100),
+                }))}
+                margin={{ top: 8, right: 10, bottom: 8, left: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-                <XAxis dataKey="id" tick={{fontSize:8,fill:'#8896A4'}} />
-                <YAxis domain={[0,100]} tick={{fontSize:9,fill:'#8896A4'}} tickFormatter={v=>`${v}%`} />
-                <Tooltip contentStyle={{borderRadius:10,fontSize:11}} formatter={v=>`${(v*100).toFixed(0)}%`} />
-                <Bar dataKey="confNum" radius={[4,4,0,0]} name="Confidence">
-                  {rcaTable.map((e,i)=><Cell key={i} fill={e.confNum>0.85?'#1A7F4B':e.confNum>0.7?'#E8960C':'#C05621'} fillOpacity={0.85} />)}
+                <XAxis dataKey="id" tick={{ fontSize: 8, fill: '#8896A4' }} interval={0} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: '#8896A4' }} tickFormatter={v => `${v}%`} />
+                <Tooltip contentStyle={{ borderRadius: 10, fontSize: 11 }} formatter={v => [`${v}%`, 'Confidence']} />
+                <Bar dataKey="confPct" radius={[4, 4, 0, 0]} name="Confidence" maxBarSize={48}>
+                  {rcaTable.map((e, i) => (
+                    <Cell
+                      key={e.id || i}
+                      fill={e.confNum > 0.85 ? '#1A7F4B' : e.confNum > 0.7 ? '#E8960C' : '#C05621'}
+                      fillOpacity={0.85}
+                    />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

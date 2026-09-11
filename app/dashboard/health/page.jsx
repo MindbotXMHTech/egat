@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, Sector,
+  LineChart, Line, PieChart, Pie, Cell, Sector,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine
 } from 'recharts'
@@ -42,8 +42,7 @@ import {
   withHealthTrendNotes,
 } from '../../../lib/healthDistribution'
 
-const TABS = ['Score Breakdown', 'Device Health Table', 'Trend Analysis', 'Fleet Comparison']
-const PIE_PANEL_MS = 340
+const TABS = ['Score Breakdown', 'Device Health Table', 'Trend Analysis']
 
 // All devices table
 const DEVICES_TABLE = FLEET.map(f => ({
@@ -123,34 +122,174 @@ function HealthTrendTooltip({ active, payload }) {
   )
 }
 
-function HealthPieActiveShape(props) {
-  const {
-    cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, percent, midAngle,
-  } = props
-  const RADIAN = Math.PI / 180
-  const r = (outerRadius || 0) + 18
-  const x = cx + r * Math.cos(-(midAngle || 0) * RADIAN)
-  const y = cy + r * Math.sin(-(midAngle || 0) * RADIAN)
+function HealthPieLegend({ pieSource, pieCat, hiddenCats, total, onToggle, onSelect, variant = 'list' }) {
+  if (variant === 'tiles') {
+    return (
+      <div className="grid grid-cols-2 gap-3 flex-1 min-w-0 content-center">
+        {pieSource.map(c => {
+          const off = Boolean(hiddenCats[c.label])
+          const selected = pieCat === c.label
+          return (
+            <div
+              key={c.label}
+              className={`rounded-xl border px-3 py-3 min-w-0 transition-all ${
+                selected ? 'bg-egat-surface-alt shadow-sm' : 'bg-white hover:bg-egat-surface-alt/50'
+              } ${off ? 'opacity-40' : ''}`}
+              style={{ borderColor: selected ? c.color : '#E2E8F0' }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  title={off ? 'แสดงหมวดนี้' : 'ซ่อนหมวดนี้'}
+                  onClick={e => onToggle(c.label, e)}
+                  className="w-2.5 h-2.5 rounded-full shrink-0 border border-white"
+                  style={{ background: c.color }}
+                  aria-pressed={!off}
+                />
+                <button
+                  type="button"
+                  onClick={() => onSelect(c.label)}
+                  className="flex-1 min-w-0 flex items-center justify-between gap-2 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-egat-navy truncate">{c.shortLabel}</span>
+                    <span className="block text-[10px] text-egat-text-muted truncate">{c.label}</span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-lg font-black leading-none" style={{ color: c.color, fontFamily: 'Inter,sans-serif' }}>{c.count}</span>
+                    <span className="block text-[10px] font-semibold text-egat-text-muted">{c.pct}%</span>
+                  </span>
+                </button>
+              </div>
+              <button type="button" onClick={() => onSelect(c.label)} className="block w-full mt-2.5">
+                <div className="h-1.5 rounded-full bg-egat-border-lt overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${total ? (c.count / total) * 100 : 0}%`,
+                      background: c.color,
+                    }}
+                  />
+                </div>
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
-    <g>
-      <Sector
-        cx={cx} cy={cy}
-        innerRadius={innerRadius}
-        outerRadius={(outerRadius || 0) + 8}
-        startAngle={startAngle} endAngle={endAngle}
-        fill={fill}
-      />
-      <text
-        x={x} y={y}
-        textAnchor={x > cx ? 'start' : 'end'}
-        dominantBaseline="central"
-        fill={fill}
-        fontSize={12}
-        fontWeight={700}
-      >
-        {`${Math.round((percent || 0) * 100)}%`}
-      </text>
-    </g>
+    <div className="flex-1 min-w-0 space-y-2.5">
+      {pieSource.map(c => (
+        <div
+          key={c.label}
+          className={`rounded-lg px-1.5 py-1 -mx-1.5 transition-colors ${pieCat === c.label ? 'bg-egat-surface-alt' : 'hover:bg-egat-surface-alt/60'}`}
+          style={{ opacity: hiddenCats[c.label] ? 0.35 : 1 }}
+        >
+          <div className="flex items-center justify-between mb-0.5 gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <button
+                type="button"
+                title={hiddenCats[c.label] ? 'แสดงหมวดนี้' : 'ซ่อนหมวดนี้'}
+                onClick={e => onToggle(c.label, e)}
+                className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/60"
+                style={{ background: c.color }}
+                aria-pressed={!hiddenCats[c.label]}
+              />
+              <button
+                type="button"
+                onClick={() => onSelect(c.label)}
+                className="text-xs font-semibold text-egat-text text-left truncate"
+              >
+                {c.shortLabel}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => onSelect(c.label)}
+              className="text-sm font-black shrink-0"
+              style={{ color: c.color, fontFamily: 'Inter,sans-serif' }}
+            >
+              {c.count}
+              <span className="text-[10px] font-semibold text-egat-text-muted ml-1">{c.pct}%</span>
+            </button>
+          </div>
+          <div className="h-1.5 rounded-full bg-egat-border-lt overflow-hidden">
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${total ? (c.count / total) * 100 : 0}%`,
+                background: c.color,
+                opacity: hiddenCats[c.label] ? 0.3 : 0.8,
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function HealthDonut({
+  pieVisible,
+  pieActiveIndex,
+  onClick,
+  centerValue,
+  centerLabel,
+  centerColor,
+  size = 240,
+}) {
+  const outer = size >= 240 ? 86 : 72
+  const inner = size >= 240 ? 54 : 44
+  return (
+    <div className="relative shrink-0 mx-auto" style={{ width: size, height: size }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie data={pieVisible} dataKey="count" nameKey="label"
+            cx="50%" cy="50%" outerRadius={outer} innerRadius={inner}
+            paddingAngle={3}
+            cursor="pointer"
+            isAnimationActive={false}
+            activeIndex={pieActiveIndex >= 0 ? pieActiveIndex : undefined}
+            activeShape={HealthPieActiveShape}
+            onClick={onClick}>
+            {pieVisible.map((e, i) => <Cell key={e.label || i} fill={e.color} cursor="pointer" />)}
+          </Pie>
+          <Tooltip
+            contentStyle={{ borderRadius: 10, fontSize: 11 }}
+            formatter={(v, n, item) => {
+              const pct = item?.payload?.pct
+              return [`${v} assets${pct != null ? ` (${pct}%)` : ''}`, n]
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <div
+          className="text-[1.6rem] font-black leading-none"
+          style={{ color: centerColor, fontFamily: 'Inter,sans-serif' }}
+        >
+          {centerValue}
+        </div>
+        <div className="text-[10px] font-semibold uppercase tracking-wider text-egat-text-muted mt-1">
+          {centerLabel}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function HealthPieActiveShape(props) {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props
+  return (
+    <Sector
+      cx={cx} cy={cy}
+      innerRadius={innerRadius}
+      outerRadius={(outerRadius || 0) + 8}
+      startAngle={startAngle} endAngle={endAngle}
+      fill={fill}
+    />
   )
 }
 
@@ -167,8 +306,6 @@ export default function HealthPage() {
   const [trendType,  setTrendType]  = useState('')
   const [trendModal, setTrendModal] = useState(null)
   const [pieCat,     setPieCat]     = useState(null)
-  const [panelCat,   setPanelCat]   = useState(null)
-  const [panelOpen,  setPanelOpen]  = useState(false)
 
   const scopedDevices = useMemo(
     () => DEVICES_TABLE.filter(d => {
@@ -191,13 +328,14 @@ export default function HealthPage() {
   )
 
   const pieDetailRows = useMemo(
-    () => toHealthDetailRows(scopedDevices, panelCat),
-    [panelCat, scopedDevices],
+    () => toHealthDetailRows(scopedDevices, pieCat),
+    [pieCat, scopedDevices],
   )
   const pieActiveIndex = pieCat
     ? pieVisible.findIndex(e => e.label === pieCat)
     : -1
-  const piePanelPct = pieSource.find(c => c.label === panelCat)?.pct
+  const pieCatMeta = pieSource.find(c => c.label === pieCat)
+  const piePanelPct = pieCatMeta?.pct
 
   useEffect(() => {
     if (!scopedDevices.length) return
@@ -205,11 +343,8 @@ export default function HealthPage() {
   }, [scopedDevices, asset])
 
   useEffect(() => {
-    if (pieCat) return undefined
-    setPanelOpen(false)
-    const t = setTimeout(() => setPanelCat(null), PIE_PANEL_MS)
-    return () => clearTimeout(t)
-  }, [pieCat])
+    if (tab >= TABS.length) setTab(0)
+  }, [tab])
 
   useEffect(() => {
     if (!trendModal) return undefined
@@ -226,21 +361,7 @@ export default function HealthPage() {
     if (hiddenCats[cat]) {
       setHiddenCats(h => toggleHiddenPieCategory(h, cat))
     }
-    if (pieCat === cat) {
-      setPieCat(null)
-      return
-    }
-    const alreadyOpen = Boolean(pieCat)
-    setPanelCat(cat)
-    setPieCat(cat)
-    if (alreadyOpen) {
-      setPanelOpen(true)
-      return
-    }
-    setPanelOpen(false)
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => setPanelOpen(true))
-    })
+    setPieCat(pieCat === cat ? null : cat)
   }
 
   function handleTogglePie(label, e) {
@@ -273,10 +394,6 @@ export default function HealthPage() {
     dim:key, value:val, weight:weights[key], weighted:+(val*weights[key]).toFixed(1)
   }))
   const radarData = Object.entries(dimensions).map(([key,val])=>({dim:key, score:val, fullMark:100}))
-  const fleetScores = scopedDevices.map(f=>{
-    const d = getHealthDetails(f.deviceId)
-    return {id:f.deviceId.replace(/-01$/,''),score:d?.score||0,status:f.status,fill:STATUS_COLOR[f.status]?.hex}
-  }).sort((a,b)=>a.score-b.score)
 
   const avgHealth = scopedDevices.length
     ? +(scopedDevices.reduce((s,f)=>s+f.health,0)/scopedDevices.length).toFixed(1)
@@ -305,37 +422,93 @@ export default function HealthPage() {
         subtitle="Weighted Composite Scoring | Performance · Availability · Error Rate · Age · Maintenance"
         extraAlerts={extraAlerts} />
 
-      {/* Asset selector */}
-      <div className="flex items-center gap-3 mb-4">
-        <div>
-          <label className="block text-[10px] font-semibold uppercase tracking-wider text-egat-text-muted mb-1">Asset</label>
-          <select value={asset} onChange={e=>setAsset(e.target.value)}
-            className="text-xs border border-egat-border rounded-lg px-3 py-1.5 bg-egat-surface text-egat-text focus:outline-none focus:border-egat-navy">
-            {(assetOptions.length ? assetOptions : scopedDevices).map(f=><option key={f.deviceId} value={f.deviceId}>{f.deviceId} — {f.site}</option>)}
-          </select>
-        </div>
-        <StatusBadge status={status} />
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
-        <KpiCard value={score}                     label="Health Score / 100"  color={sclr} delta={status} />
-        <KpiCard value={`${kpis.cpu}%`}            label="CPU Utilisation"     color={kpis.cpu>85?'#C53030':'#1B3A6B'} />
-        <KpiCard value={`${kpis.bw}%`}             label="BW Utilisation"      color={kpis.bw>85?'#C53030':'#1B3A6B'} />
-        <KpiCard value={`${kpis.pkt_loss}%`}       label="Packet Loss"         color={kpis.pkt_loss>2?'#C53030':'#1A7F4B'} />
-        <KpiCard value={avgHealth}                  label="Fleet Avg Health"    color="#E8960C" delta={`${scopedDevices.length} assets`} onClick={() => setAvgView(true)} />
-      </div>
-
-      {/* Tabs */}
+      {/* 1. Tabs */}
       <div className="flex flex-wrap gap-1 mb-4 bg-egat-surface-alt border border-egat-border rounded-lg p-1 w-fit">
         {TABS.map((t,i)=>(
-          <button key={t} onClick={()=>{ setTab(i); if (i !== 0) { setPieCat(null); setPanelOpen(false); setPanelCat(null) } }} className={`tab-pill ${tab===i?'active':''}`}>{t}</button>
+          <button key={t} onClick={()=>{ setTab(i); if (i !== 0) setPieCat(null) }} className={`tab-pill ${tab===i?'active':''}`}>{t}</button>
         ))}
       </div>
 
       {/* ─── Tab 0: Score Breakdown ───────────────────────────────────────────── */}
       {tab===0 && (
         <div className="space-y-4">
+          {/* 2. Critical Devices */}
+          <div className="card p-6">
+            <CriticalDevicesTable
+              data={scopedDevices.filter(d => d.status === 'Critical').sort((a,b)=>a.health-b.health)}
+              onRowClick={row => setAsset(row.deviceId)}
+            />
+          </div>
+
+          {/* 3. Fleet distribution + Fleet Avg Health */}
+          <div className={pieCat
+            ? 'grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_200px] gap-4 items-stretch lg:h-[360px]'
+            : 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_200px] gap-4 items-stretch'}>
+            <div className={`card p-5 flex flex-col min-h-0 ${pieCat ? 'h-full overflow-hidden' : 'min-h-[280px]'}`}>
+              <SectionHeader title="Fleet Health Distribution" />
+              <div className={`flex-1 min-h-0 ${pieCat ? 'flex flex-col items-center gap-3 overflow-hidden' : 'flex items-center gap-6'}`}>
+                <HealthDonut
+                  pieVisible={pieVisible}
+                  pieActiveIndex={pieActiveIndex}
+                  onClick={handleHealthPieClick}
+                  size={pieCat ? 168 : 240}
+                  centerValue={pieCat ? `${piePanelPct ?? 0}%` : avgHealth}
+                  centerLabel={pieCat ? (pieCatMeta?.shortLabel || 'Selected') : 'Fleet Avg'}
+                  centerColor={pieCat ? (pieCatMeta?.color || '#E8960C') : '#E8960C'}
+                />
+                <div className={pieCat ? 'w-full min-h-0 overflow-y-auto' : 'flex-1 min-w-0'}>
+                  <HealthPieLegend
+                    variant={pieCat ? 'list' : 'tiles'}
+                    pieSource={pieSource}
+                    pieCat={pieCat}
+                    hiddenCats={hiddenCats}
+                    total={scopedDevices.length}
+                    onToggle={handleTogglePie}
+                    onSelect={handleHealthPieClick}
+                  />
+                </div>
+              </div>
+              {!pieCat && (
+                <p className="text-[10px] text-egat-text-muted mt-3">คลิกจุดสีเพื่อซ่อน/แสดงหมวด · คลิกชื่อหรือกราฟเพื่อดูรายละเอียดอุปกรณ์</p>
+              )}
+            </div>
+            {pieCat && (
+              <HealthCategoryDetail
+                key={pieCat}
+                title={healthCategoryTitle(pieCat)}
+                color={healthCategoryColor(pieCat)}
+                percent={piePanelPct}
+                rows={pieDetailRows}
+                onClose={() => setPieCat(null)}
+                onSelectRow={id => setAsset(id)}
+              />
+            )}
+            <div className={`h-full ${pieCat ? '' : 'min-h-[280px]'} [&>button]:h-full [&>button]:flex [&>button]:flex-col [&>button]:justify-center`}>
+              <KpiCard value={avgHealth} label="Fleet Avg Health" color="#E8960C" delta={`${scopedDevices.length} assets`} onClick={() => setAvgView(true)} />
+            </div>
+          </div>
+
+          {/* 4. Asset selector */}
+          <div className="flex items-center gap-3">
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-egat-text-muted mb-1">Asset</label>
+              <select value={asset} onChange={e=>setAsset(e.target.value)}
+                className="text-xs border border-egat-border rounded-lg px-3 py-1.5 bg-egat-surface text-egat-text focus:outline-none focus:border-egat-navy">
+                {(assetOptions.length ? assetOptions : scopedDevices).map(f=><option key={f.deviceId} value={f.deviceId}>{f.deviceId} — {f.site}</option>)}
+              </select>
+            </div>
+            <StatusBadge status={status} />
+          </div>
+
+          {/* 5. Asset KPIs (Fleet Avg Health lives with the pie) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <KpiCard value={score}                     label="Health Score / 100"  color={sclr} delta={status} />
+            <KpiCard value={`${kpis.cpu}%`}            label="CPU Utilisation"     color={kpis.cpu>85?'#C53030':'#1B3A6B'} />
+            <KpiCard value={`${kpis.bw}%`}             label="BW Utilisation"      color={kpis.bw>85?'#C53030':'#1B3A6B'} />
+            <KpiCard value={`${kpis.pkt_loss}%`}       label="Packet Loss"         color={kpis.pkt_loss>2?'#C53030':'#1A7F4B'} />
+          </div>
+
+          {/* 6. Score / radar / formula */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Score + alerts */}
             <div className="card p-5 flex flex-col items-center">
@@ -416,97 +589,6 @@ export default function HealthPage() {
               </div>
             </div>
           </div>
-
-          {/* Health Score Pie */}
-          <div className="card p-5">
-            <SectionHeader title="Fleet Health Distribution" />
-            <div className={`health-pie-split ${panelOpen ? 'is-open' : ''}`}>
-              <div className="flex items-center gap-6 min-w-0 w-full lg:flex-1">
-                <ResponsiveContainer width="55%" height={220}>
-                  <PieChart>
-                    <Pie data={pieVisible} dataKey="count" nameKey="label"
-                      cx="50%" cy="50%" outerRadius={85} innerRadius={48}
-                      paddingAngle={3}
-                      cursor="pointer"
-                      isAnimationActive={false}
-                      activeIndex={pieActiveIndex >= 0 ? pieActiveIndex : undefined}
-                      activeShape={HealthPieActiveShape}
-                      onClick={handleHealthPieClick}>
-                      {pieVisible.map((e,i)=><Cell key={i} fill={e.color} cursor="pointer" />)}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{borderRadius:10,fontSize:11}}
-                      formatter={(v, n, item) => {
-                        const pct = item?.payload?.pct
-                        return [`${v} assets${pct != null ? ` (${pct}%)` : ''}`, n]
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="flex-1 space-y-3">
-                  {pieSource.map(c=>(
-                    <div
-                      key={c.label}
-                      className={`rounded-lg px-1.5 py-1 -mx-1.5 transition-colors duration-300 ${pieCat === c.label ? 'bg-egat-surface-alt' : 'hover:bg-egat-surface-alt/60'}`}
-                      style={{ opacity: hiddenCats[c.label] ? 0.35 : 1 }}
-                    >
-                      <div className="flex items-center justify-between mb-0.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <button
-                            type="button"
-                            title={hiddenCats[c.label] ? 'แสดงหมวดนี้' : 'ซ่อนหมวดนี้'}
-                            onClick={e => handleTogglePie(c.label, e)}
-                            className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/60"
-                            style={{ background: c.color }}
-                            aria-pressed={!hiddenCats[c.label]}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleHealthPieClick(c.label)}
-                            className="text-[11px] text-egat-text text-left truncate"
-                          >
-                            {c.label}
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleHealthPieClick(c.label)}
-                          className="text-sm font-black"
-                          style={{color:c.color,fontFamily:'Inter,sans-serif'}}
-                        >
-                          {c.count}
-                          <span className="text-[10px] font-semibold text-egat-text-muted ml-1">{c.pct}%</span>
-                        </button>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-egat-border-lt overflow-hidden">
-                        <div className="h-full rounded-full transition-[width] duration-300" style={{width:`${scopedDevices.length ? (c.count/scopedDevices.length)*100 : 0}%`,background:c.color,opacity: hiddenCats[c.label] ? 0.3 : 0.8}} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className={`health-pie-panel ${panelOpen ? 'is-open' : ''}`}>
-                {panelCat && (
-                  <HealthCategoryDetail
-                    title={healthCategoryTitle(panelCat)}
-                    color={healthCategoryColor(panelCat)}
-                    percent={piePanelPct}
-                    rows={pieDetailRows}
-                    onClose={() => setPieCat(null)}
-                    onSelectRow={id => setAsset(id)}
-                  />
-                )}
-              </div>
-            </div>
-            <p className="text-[10px] text-egat-text-muted mt-2">คลิกจุดสีเพื่อซ่อน/แสดงหมวด · คลิกชื่อหรือกราฟเพื่อดูตารางและเปอร์เซ็นต์</p>
-          </div>
-
-          <div className="card p-6">
-            <CriticalDevicesTable
-              data={scopedDevices.filter(d => d.status === 'Critical').sort((a,b)=>a.health-b.health)}
-              onRowClick={row => setAsset(row.deviceId)}
-            />
-          </div>
         </div>
       )}
 
@@ -555,7 +637,18 @@ export default function HealthPage() {
 
       {/* ─── Tab 2: Trend Analysis ────────────────────────────────────────────── */}
       {tab===2 && (
-        <div className="card p-5">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-egat-text-muted mb-1">Asset</label>
+              <select value={asset} onChange={e=>setAsset(e.target.value)}
+                className="text-xs border border-egat-border rounded-lg px-3 py-1.5 bg-egat-surface text-egat-text focus:outline-none focus:border-egat-navy">
+                {(assetOptions.length ? assetOptions : scopedDevices).map(f=><option key={f.deviceId} value={f.deviceId}>{f.deviceId} — {f.site}</option>)}
+              </select>
+            </div>
+            <StatusBadge status={status} />
+          </div>
+          <div className="card p-5">
           <SectionHeader title={`Health Score Trend — 90 วัน (${asset}) คลิกกราฟเพื่อดูรายละเอียด`} />
           <ChartFilterBar
             query={trendQuery}
@@ -619,25 +712,6 @@ export default function HealthPage() {
             ชี้ที่จุดกราฟเพื่อดูอุปกรณ์ เวลา คะแนนสุขภาพ และคะแนนความผิดปกติ · คลิกเพื่อเปิดหมายเหตุ
           </p>
         </div>
-      )}
-
-      {/* ─── Tab 3: Fleet Comparison ──────────────────────────────────────────── */}
-      {tab===3 && (
-        <div className="card p-5">
-          <SectionHeader title="Fleet Health Score Comparison" />
-          <ResponsiveContainer width="100%" height={360}>
-            <BarChart data={fleetScores} layout="vertical" margin={{top:5,right:20,bottom:5,left:10}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#EEF2F7" />
-              <XAxis type="number" domain={[0,100]} tick={{fontSize:10,fill:'#8896A4'}} />
-              <YAxis type="category" dataKey="id" tick={{fontSize:10,fill:'#4A5568'}} width={90} />
-              <Tooltip contentStyle={{borderRadius:10,fontSize:11}} />
-              <ReferenceLine x={80} stroke="#1A7F4B" strokeDasharray="4 3" />
-              <ReferenceLine x={50} stroke="#C53030" strokeDasharray="4 3" />
-              <Bar dataKey="score" radius={[0,4,4,0]} name="Health Score">
-                {fleetScores.map((e,i)=><Cell key={i} fill={e.fill} fillOpacity={0.8} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
         </div>
       )}
 
